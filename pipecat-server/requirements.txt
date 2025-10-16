@@ -1,0 +1,25 @@
+# Pipecat Voice Coach Server Requirements
+
+# Core Pipecat framework
+pipecat-ai
+
+# WebSocket support
+websockets
+asyncio
+
+# AI and Voice Services
+openai
+python-dotenv
+
+# Speech-to-Text / Text-to-Speech providers
+deepgram-sdk
+elevenlabs
+
+# Audio processing
+
+# Web framework for additional endpoints (optional)
+fastapi
+uvicorn
+
+# Logging and utilities
+python-json-logger

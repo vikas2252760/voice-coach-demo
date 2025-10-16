@@ -1,0 +1,394 @@
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background-color: white;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  min-height: 60vh;
+  overflow: hidden;
+  position: relative;
+  animation: slideUp 0.3s ease-out;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Close Button */
+.close-modal {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 18px;
+  color: #666666;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 1001;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.close-modal:hover {
+  background-color: rgba(245, 245, 245, 0.98);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Product Header */
+.product-header {
+  margin-bottom: 20px;
+  padding-top: 10px;
+}
+
+.product-details {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.product-details h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: #000000;
+  flex: 1;
+}
+
+.device-protect-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.protection-score {
+  color: white;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 24px;
+}
+
+.tab {
+  flex: 1;
+  padding: 12px 8px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: #666666;
+  border-bottom: 2px solid transparent;
+  text-align: center;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tab.active {
+  color: #000000;
+  font-weight: 600;
+  border-bottom-color: #000000;
+}
+
+.tab:hover:not(.active) {
+  color: #374151;
+}
+
+/* Guidance Section */
+.guidance-section {
+  margin-bottom: 24px;
+}
+
+.guidance-section h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #000000;
+}
+
+.guidance-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+}
+
+.guidance-icon {
+  font-size: 20px;
+  margin-top: 2px;
+}
+
+.guidance-content p {
+  margin: 0;
+  color: #374151;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+/* Pitch Section */
+.pitch-section {
+  margin-bottom: 32px;
+}
+
+.pitch-section h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #000000;
+}
+
+.pitch-points {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pitch-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0;
+}
+
+.point-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background-color: #f3f4f6;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pitch-point p {
+  margin: 0;
+  color: #374151;
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+/* Modal Body - Scrollable Content */
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 60px 20px 0 20px;
+  position: relative;
+}
+
+/* Enrollment Action */
+.enrollment-action {
+  padding: 20px;
+  background-color: white;
+  border-top: 1px solid #f0f0f0;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.start-enrollment-btn {
+  width: 100%;
+  margin: 0 auto;
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Voice Coach Container */
+.voice-coach-container {
+  height: 100%;
+  min-height: 450px;
+  border-radius: 0;
+  overflow: hidden;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Coverage Section */
+.coverage-section {
+  margin-bottom: 32px;
+}
+
+.coverage-section h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #000000;
+}
+
+.coverage-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.coverage-item {
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  border-left: 4px solid #8B5CF6;
+}
+
+.coverage-item h5 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coverage-item p {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (min-width: 481px) {
+  .modal-overlay {
+    align-items: flex-end;
+    justify-content: center;
+  }
+  
+  .modal-content {
+    margin: 0;
+    max-width: 480px;
+    max-height: 80vh;
+  }
+  
+  .close-modal {
+    top: 20px;
+    right: 20px;
+  }
+  
+  .modal-body {
+    padding: 70px 20px 0 20px;
+  }
+  
+  .coverage-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  
+  .coverage-item {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    align-items: flex-end;
+    justify-content: center;
+  }
+  
+  .modal-content {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    max-width: 100%;
+    max-height: 85vh;
+    min-height: 65vh;
+  }
+  
+  .close-modal {
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    padding: 6px;
+  }
+  
+  .modal-body {
+    padding: 50px 16px 0 16px;
+  }
+  
+  .tabs {
+    gap: 4px;
+  }
+  
+  .tab {
+    font-size: 12px;
+    padding: 10px 4px;
+  }
+  
+  .voice-coach-container {
+    min-height: 400px;
+    height: 100%;
+  }
+}

@@ -1,0 +1,48 @@
+.App {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background-color: #ffffff;
+  position: relative;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 480px) {
+  .App {
+    max-width: 100%;
+    box-shadow: none;
+  }
+}
+
+/* Common button styles */
+.button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  border: none;
+  font-size: 16px;
+}
+
+.button-primary {
+  background-color: #8B5CF6;
+  color: white;
+}
+
+.button-primary:hover {
+  background-color: #7C3AED;
+}
+
+.button-secondary {
+  background-color: #E5E7EB;
+  color: #374151;
+}
+
+.button-secondary:hover {
+  background-color: #D1D5DB;
+}
