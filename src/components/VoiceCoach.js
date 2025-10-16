@@ -192,7 +192,7 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
       setCurrentExample(example);
 
         // Initialize conversation in service FIRST (before any addMessage calls)
-        const createdConversation = conversationService.createConversation(conversationId, userId, {
+        conversationService.createConversation(conversationId, userId, {
           customerName: customer?.name || 'Unknown Customer',
           scenario: example?.title || 'Current Customer Profile',
           protectionScore: customer?.protectionScore || 70
