@@ -23,7 +23,7 @@ A React application featuring an AI-powered Voice Coach for field service techni
 
 1. Clone or navigate to the project directory:
    ```bash
-   cd /Users/vikas.raut/Documents/Field_services/voice-coach-demo
+   cd ./voice-coach-demo
    ```
 
 2. Install dependencies:
