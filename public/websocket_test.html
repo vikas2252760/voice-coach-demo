@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>React WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        #log { background: #f0f0f0; padding: 10px; height: 400px; overflow-y: scroll; margin-top: 10px; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Test from React Server</h1>
+    <p>Testing WebSocket connection from React development server context</p>
+    <p><strong>Current URL:</strong> <span id="currentUrl"></span></p>
+    
+    <button onclick="testConnection()">Test WebSocket Connection</button>
+    <button onclick="testIP()">Test with 127.0.0.1</button>
+    <button onclick="clearLog()">Clear Log</button>
+    
+    <div id="status">Ready to test...</div>
+    <div id="log"></div>
+
+    <script>
+        document.getElementById('currentUrl').textContent = window.location.href;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('log');
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function testConnection() {
+            testWebSocket('ws://localhost:8080');
+        }
+
+        function testIP() {
+            testWebSocket('ws://127.0.0.1:8080');
+        }
+
+        function testWebSocket(url) {
+            const status = document.getElementById('status');
+            status.innerHTML = `Testing connection to ${url}...`;
+            
+            log(`🔄 Testing WebSocket connection to: ${url}`, 'info');
+            log('🔍 Current location: ' + window.location.href, 'info');
+            log('🔍 Location protocol: ' + window.location.protocol, 'info');
+            
+            try {
+                const ws = new WebSocket(url);
+                
+                log('✅ WebSocket object created successfully', 'success');
+                log('🔍 Initial readyState: ' + ws.readyState, 'info');
+                
+                let messageReceived = false;
+                let connectionEstablished = false;
+                
+                ws.onopen = function(event) {
+                    connectionEstablished = true;
+                    log('🎉 Connection opened successfully!', 'success');
+                    log('🔍 Final readyState: ' + ws.readyState, 'success');
+                    status.innerHTML = '✅ Connected successfully!';
+                    
+                    // Send test message
+                    const testMessage = {
+                        type: 'start_pitch_session',
+                        customer: { name: 'React Server Test' },
+                        timestamp: Date.now()
+                    };
+                    
+                    ws.send(JSON.stringify(testMessage));
+                    log('📤 Sent test message', 'info');
+                };
+                
+                ws.onmessage = function(event) {
+                    messageReceived = true;
+                    try {
+                        const data = JSON.parse(event.data);
+                        log('📨 Received: ' + data.type, 'success');
+                        
+                        if (data.type === 'textFeedback') {
+                            log('🎯 AI Response received successfully!', 'success');
+                            setTimeout(() => {
+                                ws.close();
+                                status.innerHTML = '✅ Test completed successfully!';
+                            }, 1000);
+                        }
+                        
+                    } catch (error) {
+                        log('❌ Error parsing message: ' + error.message, 'error');
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    log(`🔌 Connection closed. Code: ${event.code}, Reason: ${event.reason || 'Normal closure'}`, 'info');
+                    
+                    if (messageReceived) {
+                        status.innerHTML = '✅ Test completed - WebSocket working perfectly!';
+                        log('🎉 SUCCESS: WebSocket connection working from React server!', 'success');
+                        log(`📋 Connection closed normally after successful communication (code ${event.code})`, 'info');
+                    } else {
+                        // Only treat as failure if connection never established or critical error
+                        if (event.code === 1006 && !connectionEstablished) {
+                            status.innerHTML = `❌ Connection failed - Server unreachable`;
+                            log('❌ FAILED: Could not connect to WebSocket server', 'error');
+                        } else if (event.code === 1002 || event.code === 1003) {
+                            status.innerHTML = `❌ Connection failed (Protocol error: ${event.code})`;
+                            log('❌ FAILED: WebSocket protocol error', 'error');
+                        } else {
+                            status.innerHTML = '⚠️ Connection closed before message test';
+                            log('⚠️ Connection closed before message exchange completed', 'warn');
+                        }
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    log('❌ WebSocket error occurred', 'error');
+                    log('🔍 Error details: ' + JSON.stringify(error), 'error');
+                    status.innerHTML = '❌ Connection error';
+                };
+                
+                // Timeout check
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        log('⏰ Connection timeout after 5 seconds', 'error');
+                        ws.close();
+                        status.innerHTML = '❌ Connection timeout';
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                log('💥 Exception creating WebSocket: ' + error.message, 'error');
+                status.innerHTML = '❌ WebSocket creation failed';
+            }
+        }
+
+        // Auto-log environment info
+        window.onload = function() {
+            log('🌐 Page loaded from React development server', 'info');
+            log('📍 Location: ' + window.location.href, 'info');
+            log('🔒 Protocol: ' + window.location.protocol, 'info');
+            log('🏠 Host: ' + window.location.host, 'info');
+        };
+    </script>
+</body>
+</html>

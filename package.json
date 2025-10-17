@@ -1,6 +1,6 @@
 {
   "name": "voice-coach-demo",
-  "version": "0.2.0",
+  "version": "0.5.7-all-listeners-protected",
   "private": true,
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",

@@ -337,6 +337,14 @@ class VoiceService {
     return utterance;
   }
 
+  // Stop current speech synthesis
+  stopSpeaking() {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      this.emit('speechStopped');
+    }
+  }
+
   // Get transcribed text
   getTranscribedText() {
     return {

@@ -38,6 +38,7 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
   const messagesEndRef = useRef(null);
   const sessionStartTime = useRef(Date.now());
   const recentMessages = useRef(new Set());
+  const eventListenersRegistered = useRef(false); // Prevent duplicate listeners
 
   useEffect(() => {
     if (isActive) {
@@ -63,118 +64,106 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
       
       // Connect to WebSocket
       websocketService.connect();
-          websocketService.on('connected', (data) => {
-            setIsConnected(true);
-            addSystemMessage(`🎯 Connected to Voice Coach!\n\nIntelligent coaching system is ready. Start recording to begin your personalized practice session.`);
-          });
+      
+      // Prevent duplicate event listener registration
+      if (!eventListenersRegistered.current) {
+        eventListenersRegistered.current = true;
+        
+        websocketService.on('connected', (data) => {
+          setIsConnected(true);
+          addSystemMessage(`🎯 Connected to Voice Coach!\n\nIntelligent coaching system is ready. Start recording to begin your personalized practice session.`);
+        });
 
-          websocketService.on('disconnected', (data) => {
-            setIsConnected(false);
-            setIsAiTyping(false); // Clear any stuck typing indicators
-            
-            // Clear any pending timeouts
-            if (window.aiTypingTimeout) {
-              clearTimeout(window.aiTypingTimeout);
-              window.aiTypingTimeout = null;
-            }
-            if (window.voiceDataTimeout) {
-              clearTimeout(window.voiceDataTimeout);
-              window.voiceDataTimeout = null;
-            }
-            
-            const reason = data?.reason || 'Connection closed';
-            const code = data?.code || 'Unknown';
-            const willReconnect = data?.willReconnect || false;
-            
-            console.log(`Pipecat server disconnected: ${code} - ${reason}`);
-            
-            if (willReconnect) {
-              addSystemMessage(`🔄 Pipecat server disconnected. Attempting to reconnect...\nReason: ${reason}`);
-            } else {
-              addSystemMessage(`🔌 Disconnected from Pipecat Voice Coach server.\nReason: ${reason}`);
-            }
-          });
+        websocketService.on('disconnected', (data) => {
+          setIsConnected(false);
+          setIsAiTyping(false); // Clear any stuck typing indicators
+          
+          // Clear any pending timeouts
+          if (window.aiTypingTimeout) {
+            clearTimeout(window.aiTypingTimeout);
+            window.aiTypingTimeout = null;
+          }
+          if (window.voiceDataTimeout) {
+            clearTimeout(window.voiceDataTimeout);
+            window.voiceDataTimeout = null;
+          }
+          
+          const reason = data?.reason || 'Connection closed';
+          const code = data?.code || 'Unknown';
+          const willReconnect = data?.willReconnect || false;
+          
+          console.log(`Pipecat server disconnected: ${code} - ${reason}`);
+          
+          if (willReconnect) {
+            addSystemMessage(`🔄 Pipecat server disconnected. Attempting to reconnect...\nReason: ${reason}`);
+          } else {
+            addSystemMessage(`🔌 Disconnected from Pipecat Voice Coach server.\nReason: ${reason}`);
+          }
+        });
+        
+        // Handle feedback from WebSocket (unified handler to prevent duplicates)
+        const handleFeedback = (feedback) => {
+          setIsAiTyping(false);
+          
+          // Clear any pending safety timeouts since we got a response
+          if (window.aiTypingTimeout) {
+            clearTimeout(window.aiTypingTimeout);
+            window.aiTypingTimeout = null;
+          }
+          if (window.voiceDataTimeout) {
+            clearTimeout(window.voiceDataTimeout);
+            window.voiceDataTimeout = null;
+          }
+          
+          // Pass through enhanced feedback data
+          const extraData = {
+            improvements: feedback.improvements || [],
+            achievements: feedback.achievements || [],
+            progressPercent: feedback.progressPercent || null,
+            sessionResults: feedback.sessionResults || null
+          };
+          
+          // Ensure enhanced feedback data is available
+          if (extraData.improvements.length === 0 && extraData.achievements.length === 0) {
+            extraData.improvements = ["Continue practicing to improve your pitch"];
+            extraData.achievements = ["Voice message received and processed"];
+          }
+          
+          // Add message only once (no AI voice response)
+          addAIMessage(feedback.message, feedback.score, extraData);
+        };
 
-          websocketService.on('textFeedback', (feedback) => {
-            setIsAiTyping(false);
-            // Clear any pending safety timeouts since we got a response
-            if (window.aiTypingTimeout) {
-              clearTimeout(window.aiTypingTimeout);
-              window.aiTypingTimeout = null;
-            }
-            if (window.voiceDataTimeout) {
-              clearTimeout(window.voiceDataTimeout);
-              window.voiceDataTimeout = null;
-            }
-            
-            // Pass through enhanced feedback data
-            const extraData = {
-              improvements: feedback.improvements || [],
-              achievements: feedback.achievements || [],
-              progressPercent: feedback.progressPercent || null,
-              sessionResults: feedback.sessionResults || null
-            };
-            
-            // Ensure enhanced feedback data is available
-            if (extraData.improvements.length === 0 && extraData.achievements.length === 0) {
-              extraData.improvements = ["Continue practicing to improve your pitch"];
-              extraData.achievements = ["Voice message received and processed"];
-            }
-            
-            addAIMessage(feedback.message, feedback.score, extraData);
-          });
+        // Listen for textFeedback from WebSocket (primary response type)
+        websocketService.on('textFeedback', handleFeedback);
+        
+        websocketService.on('error', (error) => {
+          setIsAiTyping(false); // Clear any stuck typing indicators
+          
+          // Clear any pending timeouts
+          if (window.aiTypingTimeout) {
+            clearTimeout(window.aiTypingTimeout);
+            window.aiTypingTimeout = null;
+          }
+          if (window.voiceDataTimeout) {
+            clearTimeout(window.voiceDataTimeout);
+            window.voiceDataTimeout = null;
+          }
+          
+          const errorMessage = error?.details || error?.message || 'Connection error';
+          addSystemMessage(`🚫 Pipecat Server Error: ${errorMessage}`);
+          
+          // Show setup instructions
+          if (errorMessage.includes('timeout') || errorMessage.includes('ensure')) {
+            addSystemMessage(`📋 Setup Instructions:\n1. Open terminal in project folder\n2. Run: cd pipecat-server && ./setup.sh\n3. Add API keys to .env file\n4. Run: ./start.sh\n5. Refresh this page`);
+          }
+        });
 
-      websocketService.on('voiceFeedback', (feedback) => {
-        setIsAiTyping(false);
-        // Clear any pending safety timeouts since we got a response
-        if (window.aiTypingTimeout) {
-          clearTimeout(window.aiTypingTimeout);
-          window.aiTypingTimeout = null;
-        }
-        if (window.voiceDataTimeout) {
-          clearTimeout(window.voiceDataTimeout);
-          window.voiceDataTimeout = null;
-        }
-        addAIMessage(feedback.message);
-        if (feedback.audioUrl) {
-          voiceService.playAudio(feedback.audioUrl);
-        } else {
-          voiceService.speakText(feedback.message);
-        }
-      });
+        websocketService.on('maxReconnectAttemptsReached', (data) => {
+          addSystemMessage(`❌ Could not connect to Pipecat server after ${data.attempts} attempts.\n\n🔧 Please ensure:\n• Pipecat server is running (./start.sh)\n• API keys are configured\n• Port 8080 is available`);
+        });
 
-      websocketService.on('conversationHistory', (history) => {
-        // Handle conversation history if needed
-      });
-
-      websocketService.on('error', (error) => {
-            setIsAiTyping(false); // Clear any stuck typing indicators
-            
-            // Clear any pending timeouts
-            if (window.aiTypingTimeout) {
-              clearTimeout(window.aiTypingTimeout);
-              window.aiTypingTimeout = null;
-            }
-            if (window.voiceDataTimeout) {
-              clearTimeout(window.voiceDataTimeout);
-              window.voiceDataTimeout = null;
-            }
-            
-            const errorMessage = error?.details || error?.message || 'Connection error';
-            addSystemMessage(`🚫 Pipecat Server Error: ${errorMessage}`);
-            
-            // Show setup instructions
-            if (errorMessage.includes('timeout') || errorMessage.includes('ensure')) {
-              addSystemMessage(`📋 Setup Instructions:\n1. Open terminal in project folder\n2. Run: cd pipecat-server && ./setup.sh\n3. Add API keys to .env file\n4. Run: ./start.sh\n5. Refresh this page`);
-            }
-          });
-
-          websocketService.on('maxReconnectAttemptsReached', (data) => {
-            addSystemMessage(`❌ Could not connect to Pipecat server after ${data.attempts} attempts.\n\n🔧 Please ensure:\n• Pipecat server is running (./start.sh)\n• API keys are configured\n• Port 8080 is available`);
-          });
-
-          // Handle intelligent session events
-          websocketService.on('sessionComplete', (data) => {
+        // Handle intelligent session events
+        websocketService.on('sessionComplete', (data) => {
             setIsRecording(false);
             setIsConnected(false);
             setVolumeLevel(0);
@@ -186,6 +175,7 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
               addSystemMessage(`🏆 **Coaching Session Completed!**\n\n🎯 Goals achieved through intelligent progression\n📊 Final confidence score: ${data.results.confidenceScore || 'N/A'}\n⏱️ Auto-disconnected after successful coaching\n\n✅ Ready to proceed with customer enrollment!`);
             }
           });
+      }
 
       // Set initial example based on current customer
       const example = getRandomPitchingExample();
@@ -365,9 +355,9 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
         await voiceService.stopRecording();
         setIsRecording(false);
         setVolumeLevel(0);
-      } else {
-        // Auto-start session if this is the first recording  
-        startSessionIfNeeded();
+        } else {
+          // Auto-start session if this is the first recording  
+          startSessionIfNeeded();
 
         await voiceService.startRecording();
         setIsRecording(true);
@@ -400,7 +390,7 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
         }, 1000);
 
         const message = {
-          id: Date.now() + Math.random(),
+          id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           content,
           type,
           score,
@@ -485,24 +475,57 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
     setShowHistory(true);
   };
 
-  // Handler functions for Connect/Recording buttons
-  const handleConnect = async () => {
+  // Simplified Session Management with Bi-directional Communication
+  const startVoiceSession = async () => {
     if (!isConnected) {
-      addSystemMessage("🔄 Connecting to Voice Coach...");
+      addSystemMessage("🔄 Starting Voice Coach session...");
       websocketService.connect();
+      
+        // Auto-start recording once connected (bi-directional communication)
+        const handleAutoRecord = () => {
+          setTimeout(async () => {
+            if (!isRecording && isConnected) {
+              addSystemMessage("🎙️ Ready! Start speaking for real-time coaching...");
+              await toggleRecording();
+              websocketService.off('connected', handleAutoRecord);
+            }
+          }, 1000);
+        };
+        
+        // Remove any existing listeners before adding new one
+        websocketService.off('connected', handleAutoRecord);
+        websocketService.on('connected', handleAutoRecord);
     } else {
+      // Start recording immediately
       await toggleRecording();
     }
   };
 
-  const handleDisconnect = async () => {
-    // Only stop recording, don't disconnect session
-    await toggleRecording();
+  const stopVoiceSession = async () => {
+    if (isRecording) {
+      await toggleRecording(); // Stop current recording
+    }
+    
+    // End the entire session
+    addSystemMessage("🎯 Voice coaching session ended. Great work!");
+    websocketService.disconnect();
   };
 
   const cleanup = () => {
     voiceService.cleanup();
     websocketService.disconnect();
+    
+    // Remove event listeners to prevent memory leaks
+    websocketService.off('connected');
+    websocketService.off('disconnected'); 
+    websocketService.off('textFeedback');
+    websocketService.off('voiceFeedback');
+    websocketService.off('error');
+    websocketService.off('maxReconnectAttemptsReached');
+    websocketService.off('sessionComplete');
+    
+    // Reset event listener flag
+    eventListenersRegistered.current = false;
     
     // Clear any pending timeouts
     if (window.aiTypingTimeout) {
@@ -734,25 +757,29 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
             
             {/* Professional Control Bar */}
             <ControlBar className="voice-coach-controls">
-                  {/* Main Action Button */}
-                  {!isConnected ? (
+              <div className="button-container">
+                {/* Simplified Session Controls */}
+                {!isConnected ? (
+                  <button
+                    onClick={startVoiceSession}
+                    disabled={!isInitialized}
+                    className="primary-action-btn start-session-btn"
+                  >
+                    <span className="btn-icon">🚀</span>
+                    <span className="btn-text">Start Voice Session</span>
+                  </button>
+                ) : (
+                  <>
+                    {/* Main Recording Button */}
                     <button
-                      onClick={handleConnect}
-                      disabled={!isInitialized}
-                      className="primary-action-btn"
-                    >
-                      🔌 Connect to Voice Coach
-                    </button>
-                  ) : (
-                    <button
-                      onClick={isRecording ? handleDisconnect : handleConnect}
+                      onClick={isRecording ? toggleRecording : startVoiceSession}
                       disabled={!isInitialized}
                       className={`primary-action-btn ${isRecording ? 'recording-active' : 'recording-ready'}`}
                     >
                       {isRecording ? (
                         <>
-                          <span className="btn-icon">⏹️</span>
-                          <span className="btn-text">Stop & Get Feedback</span>
+                          <span className="btn-icon recording-pulse">⏹️</span>
+                          <span className="btn-text">Stop Recording</span>
                         </>
                       ) : (
                         <>
@@ -761,14 +788,20 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
                         </>
                       )}
                     </button>
-                  )}
+                    
+                    {/* End Session Button */}
+                    <button
+                      onClick={stopVoiceSession}
+                      className="end-session-btn"
+                      disabled={!isInitialized}
+                    >
+                      <span className="btn-icon">🔚</span>
+                      <span className="btn-text">End Session</span>
+                    </button>
+                  </>
+                )}
+              </div>
               
-              {/* Debug Info */}
-              {isRecording && (
-                <div className="recording-status-modern">
-                  🔴 Volume: {Math.round(volumeLevel * 100)}%
-                </div>
-              )}
             </ControlBar>
           </>
         )}
@@ -780,21 +813,6 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
             <button onClick={getConversationHistory} className="history-btn">
               📜 View History
             </button>
-            
-            {/* End Session Button - Only show when connected */}
-            {isConnected && (
-              <button
-                onClick={() => {
-                  websocketService.disconnect();
-                  setIsConnected(false);
-                  setIsRecording(false);
-                  addSystemMessage("🔌 Coaching session ended. Great work!");
-                }}
-                className="end-session-btn"
-              >
-                🔌 End Session
-              </button>
-            )}
             
             <button onClick={onClose} className="close-coach-btn">
               ✕ Close Coach
