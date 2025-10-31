@@ -5,17 +5,13 @@ pipecat-ai
 
 # WebSocket support
 websockets
-asyncio
 
-# AI and Voice Services
-openai
+# Gemini Live AI Service
+google-generativeai
 python-dotenv
 
-# Speech-to-Text / Text-to-Speech providers
-deepgram-sdk
-elevenlabs
-
-# Audio processing
+# Audio processing (if needed)
+# Note: Gemini Live handles audio directly
 
 # Web framework for additional endpoints (optional)
 fastapi

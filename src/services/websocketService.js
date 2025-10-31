@@ -11,6 +11,11 @@ class WebSocketService {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 2;
     this.currentSession = null;
+    this.lastSentMessage = null;
+    this.lastSentTime = 0;
+    this.messageCooldown = 2000; // 2 second cooldown between voice messages
+    this.sentMessages = new Set(); // Track sent message IDs
+    this.processing = false; // Prevent concurrent processing
   }
 
   // Event emitter methods
@@ -46,13 +51,12 @@ class WebSocketService {
       this.ws = new WebSocket(targetUrl);
       this.setupEventListeners();
       
-      // Fallback to demo mode after 3 seconds if no connection
+      // Fallback to demo mode after 5 seconds if no connection
       setTimeout(() => {
         if (!this.isConnected) {
-          console.log('⏰ Connection timeout - using demo mode');
           this.switchToOfflineMode();
         }
-      }, 3000);
+      }, 5000);
       
     } catch (error) {
       console.error('❌ WebSocket creation failed:', error);
@@ -152,6 +156,18 @@ class WebSocketService {
         });
         break;
         
+      case 'audioResponse':
+        console.log('🔊 Audio response received from Gemini AI');
+        this.emit('textFeedback', {
+          message: data.message || 'Audio coaching response received',
+          type: 'ai',
+          timestamp: data.timestamp || Date.now(),
+          hasAudio: true
+        });
+        // Trigger text-to-speech for audio response
+        this.playAudioResponse(data.message);
+        break;
+        
       default:
         // Handle any unknown message types with text content  
         if (data.message || typeof data === 'string') {
@@ -171,6 +187,12 @@ class WebSocketService {
       return;
     }
     
+    // Only switch to demo mode after multiple failed attempts
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      setTimeout(() => this.connect(), 2000);
+      return;
+    }
+    
     this.isOfflineMode = true;
     this.isConnected = false;
     
@@ -179,34 +201,95 @@ class WebSocketService {
       this.ws = null;
     }
     
-    console.log('🎭 Voice Coach running in demo mode');
+    console.log('❌ Unable to connect to real server');
     
-    // Simulate successful connection for UI
-    setTimeout(() => {
-      this.isConnected = true;
-      this.emit('connected', {
-        timestamp: Date.now(),
-        server: 'Voice Coach (Demo)',
-        status: 'demo'
-      });
-    }, 500);
+    // Emit connection failed instead of fake demo connection
+    this.emit('connectionFailed', {
+      timestamp: Date.now(),
+      message: 'Unable to connect to Voice Coach server'
+    });
   }
 
   // Send message to server
   send(type, payload = {}) {
+    // AGGRESSIVE duplicate prevention for voice_data
+    if (type === 'voice_data') {
+      // Block if already processing
+      if (this.processing) {
+        console.log('🚫 Already processing voice data - blocking duplicate');
+        return;
+      }
+      
+      const now = Date.now();
+      const messageContent = JSON.stringify({type, ...payload});
+      
+      // Create unique message ID
+      const messageId = `${type}_${payload.audioSize || 0}_${payload.timestamp || now}_${payload.transcribedText?.substring(0, 20) || 'no_text'}`;
+      
+      // Check if we already sent this exact message
+      if (this.sentMessages.has(messageId)) {
+        console.log('🚫 Exact duplicate message blocked');
+        return;
+      }
+      
+      // Check cooldown period
+      if (this.lastSentMessage === messageContent && (now - this.lastSentTime) < this.messageCooldown) {
+        console.log('🚫 Duplicate message blocked - cooldown active');
+        return;
+      }
+      
+      // Mark as processing
+      this.processing = true;
+      this.lastSentMessage = messageContent;
+      this.lastSentTime = now;
+      this.sentMessages.add(messageId);
+      
+      // Clean old message IDs (keep last 10)
+      if (this.sentMessages.size > 10) {
+        const messages = Array.from(this.sentMessages);
+        this.sentMessages.clear();
+        messages.slice(-5).forEach(id => this.sentMessages.add(id));
+      }
+      
+      // Clear processing flag after cooldown
+      setTimeout(() => {
+        this.processing = false;
+      }, this.messageCooldown);
+    }
+    
+    // ONLY send to real server - no mock responses
     if (this.isConnected && this.ws && this.ws.readyState === WebSocket.OPEN && !this.isOfflineMode) {
-      // Real WebSocket
       const message = { type, timestamp: Date.now(), ...payload };
+      
+      // Ensure voice_data has transcribedText
+      if (type === 'voice_data' && !message.transcribedText) {
+        message.transcribedText = payload.text || payload.transcription || 'User provided voice input for coaching analysis';
+      }
+      
       try {
         this.ws.send(JSON.stringify(message));
-        console.log('📤 Sent:', type);
+        console.log('📤 UNIQUE message sent to server:', type, message.transcribedText ? `"${message.transcribedText.substring(0, 30)}..."` : '');
       } catch (error) {
         console.error('❌ Send failed:', error);
-        this.queueMessage(message);
+        this.processing = false; // Clear processing flag on error
+        this.emit('textFeedback', {
+          message: 'Connection error - please try again',
+          type: 'error',
+          timestamp: Date.now()
+        });
       }
     } else {
-      // Demo mode
-      this.simulateResponse(type, payload);
+      // No mock responses - only show connection error
+      console.log('❌ Not connected to real server');
+      this.processing = false; // Clear processing flag
+      this.emit('textFeedback', {
+        message: 'Not connected to Voice Coach server. Please ensure server is running.',
+        type: 'error',
+        timestamp: Date.now()
+      });
+      
+      // Try to reconnect
+      this.connect();
     }
   }
 
@@ -232,76 +315,12 @@ class WebSocketService {
 
   // Heartbeat removed - not needed for this application
 
-  // Simulate demo responses
+  // NO mock responses - only real server responses
   simulateResponse(type, payload) {
-    const responses = {
-      start_pitch_session: () => {
-        this.currentSession = {
-          id: `demo_session_${Date.now()}`,
-          startTime: Date.now(),
-          customerProfile: payload.customer || {}
-        };
-        
-        setTimeout(() => {
-          this.emit('textFeedback', {
-            message: "Welcome! I'm your AI Voice Coach. Let's practice your pitch together. Start speaking when you're ready!",
-            type: 'ai',
-            timestamp: Date.now()
-          });
-        }, 800);
-      },
-      
-      voice_data: () => {
-        setTimeout(() => {
-          const feedback = this.generateContextualFeedback();
-          
-          // Use textFeedback consistently to avoid duplicates
-          this.emit('textFeedback', {
-            message: feedback.message,
-            type: 'ai',
-            timestamp: Date.now(),
-            score: feedback.score,
-            improvements: feedback.areas || [],
-            achievements: ['Clear voice delivery'],
-            progressPercent: 75
-          });
-        }, 1200);
-      }
-    };
-
-    const responseHandler = responses[type];
-    if (responseHandler) {
-      responseHandler();
-    }
+    // Do nothing - no mock responses allowed
+    console.log('🚫 Mock responses disabled - only real server responses');
   }
 
-  // Generate contextual feedback for demo mode
-  generateContextualFeedback() {
-    const feedbackOptions = [
-      {
-        message: "Great energy! Try to slow down slightly and emphasize the key benefits more clearly.",
-        score: 85,
-        areas: ['pace', 'emphasis']
-      },
-      {
-        message: "Excellent opening! Consider adding a specific example to make your pitch more concrete and memorable.",
-        score: 88,
-        areas: ['examples', 'memorability']
-      },
-      {
-        message: "Good structure! Your confidence shines through. Try pausing after key points to let them sink in.",
-        score: 82,
-        areas: ['pacing', 'impact']
-      },
-      {
-        message: "Nice connection with the customer's needs! Your technical explanation could be simplified for better understanding.",
-        score: 90,
-        areas: ['clarity', 'technical_communication']
-      }
-    ];
-
-    return feedbackOptions[Math.floor(Math.random() * feedbackOptions.length)];
-  }
 
   // Disconnect from server
   disconnect() {
@@ -327,6 +346,59 @@ class WebSocketService {
   }
 
   // Get connection status
+  // Play audio response using browser TTS
+  playAudioResponse(text) {
+    if ('speechSynthesis' in window) {
+      console.log('🔊 Attempting to play audio response:', text.substring(0, 50) + '...');
+      
+      // Stop any current speech
+      speechSynthesis.cancel();
+      
+      // Wait a moment for cancel to complete
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.volume = 0.8;
+        
+        // Load voices if not already loaded
+        const voices = speechSynthesis.getVoices();
+        console.log('🎤 Available voices:', voices.length);
+        
+        // Select a professional voice
+        const preferredVoice = voices.find(voice => 
+          voice.lang.startsWith('en') && 
+          (voice.name.toLowerCase().includes('female') || voice.name.toLowerCase().includes('samantha'))
+        ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+        
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+          console.log('🎤 Selected voice:', preferredVoice.name);
+        }
+
+        utterance.onstart = () => {
+          console.log('🎤 AI Coach speaking...');
+          this.emit('speechStarted', { text: text });
+        };
+        
+        utterance.onend = () => {
+          console.log('✅ AI Coach finished speaking');
+          this.emit('speechEnded', { text: text });
+        };
+        
+        utterance.onerror = (error) => {
+          console.error('❌ Speech synthesis error:', error);
+          this.emit('speechError', { error: error });
+        };
+
+        speechSynthesis.speak(utterance);
+        console.log('🔊 Speech synthesis started');
+      }, 100);
+    } else {
+      console.warn('⚠️ Speech synthesis not supported in this browser');
+    }
+  }
+
   getStatus() {
     return {
       isConnected: this.isConnected,

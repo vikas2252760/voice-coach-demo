@@ -251,6 +251,12 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
 
     voiceService.on('speechRecognitionEnded', (result) => {
       setIsTranscribing(false);
+      
+      // Send transcription to server via WebSocket
+      const transcriptToSend = result.transcript || "User provided voice input for coaching analysis";
+      console.log('📤 Sending transcript to server:', transcriptToSend);
+      websocketService.send('voice_data', { transcribedText: transcriptToSend });
+      
       if (result.success && result.finalText && result.finalText.trim().length > 0) {
         addUserMessage(`💬 You said: "${result.finalText}"`);
         setTranscribedText(result.finalText);

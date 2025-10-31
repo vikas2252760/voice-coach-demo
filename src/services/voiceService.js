@@ -1,7 +1,7 @@
 // Voice recording and playback service for Voice Coach
 
 class VoiceService {
-  constructor() {
+  constructor(websocketService = null) {
     this.mediaRecorder = null;
     this.audioChunks = [];
     this.isRecording = false;
@@ -10,6 +10,7 @@ class VoiceService {
     this.analyser = null;
     this.dataArray = null;
     this.callbacks = new Map();
+    this.websocketService = websocketService;
     
     // Speech Recognition
     this.speechRecognition = null;
@@ -122,9 +123,11 @@ class VoiceService {
       this.speechRecognition.onend = () => {
         console.log('Speech recognition ended');
         this.isRecognizing = false;
+        
         this.emit('speechRecognitionEnded', {
           finalText: this.transcribedText,
-          success: this.transcribedText.length > 0
+          success: this.transcribedText.length > 0,
+          transcript: this.transcribedText.trim() || "User provided voice input for coaching analysis"
         });
       };
 
@@ -184,6 +187,10 @@ class VoiceService {
 
     if (this.mediaRecorder.state === 'inactive') {
       this.audioChunks = [];
+      // Reset transcription for new recording
+      this.transcribedText = '';
+      this.interimText = '';
+      
       this.mediaRecorder.start(1000); // Collect data every second
       this.isRecording = true;
       this.startVolumeAnalysis();

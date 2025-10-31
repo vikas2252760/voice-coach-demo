@@ -6,10 +6,9 @@ This project now includes **real-time AI voice coaching** powered by [Pipecat](h
 
 ### 1. Setup API Keys
 
-You'll need API keys from these providers:
+You'll need API keys from this provider:
 
-- **OpenAI**: Get your API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-- **Deepgram**: Get your API key at [console.deepgram.com/api-keys](https://console.deepgram.com/api-keys)
+- **Gemini**: Get your API key at [ai.google.dev](https://ai.google.dev/)
 
 ### 2. Start the Pipecat Server
 
@@ -46,10 +45,10 @@ npm start
 
 ### Key Features
 
-1. **🗣️ Speech-to-Text (STT)**: Deepgram Nova-2 for accurate transcription
-2. **🤖 AI Processing**: OpenAI GPT-4 Turbo for intelligent coaching feedback  
-3. **🔊 Text-to-Speech (TTS)**: Deepgram Aura voices for natural responses
-4. **⚡ Real-Time**: WebSocket bidirectional communication
+1. **🎙️ Direct Audio Processing**: Gemini Live handles audio input and output natively
+2. **🤖 AI Processing**: Google Gemini 2.0 Flash for intelligent coaching feedback  
+3. **🔊 Natural Voice Response**: Gemini Live's built-in voice synthesis
+4. **⚡ Real-Time**: WebSocket bidirectional communication with streamlined pipeline
 5. **🎯 Voice Coaching**: Specialized prompts for sales pitch training
 
 ## 🔧 Architecture
@@ -62,8 +61,9 @@ npm start
 
 ### Backend (Pipecat Server)
 - **WebSocket Transport**: Handles client connections
-- **Speech Pipeline**: STT → LLM → TTS processing chain
+- **Gemini Live Pipeline**: Direct audio → Gemini Live → audio response
 - **Voice Activity Detection**: Silero VAD for natural conversation flow
+- **Simplified Architecture**: Single service handles speech recognition, AI processing, and voice synthesis
 - **Context Management**: Maintains coaching conversation state
 
 ## 📡 WebSocket API
