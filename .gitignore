@@ -54,6 +54,7 @@ pipecat-server/*.pyc
 
 # Environment files (keep template)
 pipecat-server/.env
+*.env
 
 # Other
 *.tgz

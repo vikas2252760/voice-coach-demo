@@ -11,7 +11,7 @@ VOICE_COACH_PORT=8080
 
 # Optional: Gemini Model configuration
 # Use current Gemini 2.0 models (1.5 series deprecated September 2025)
-GEMINI_MODEL=gemini-2.0-flash-exp
+GEMINI_MODEL=gemini-2.0-flash
 GEMINI_VOICE=Puck
 
 # Optional: Logging level

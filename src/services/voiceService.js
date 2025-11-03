@@ -116,12 +116,23 @@ class VoiceService {
       };
 
       this.speechRecognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        this.emit('speechRecognitionError', event.error);
+        const errorType = event.error || 'unknown';
+        // Handle speech recognition error types
+        
+        // Handle specific error types with user-friendly messages
+        if (errorType === 'not-allowed') {
+          this.emit('speechRecognitionError', 'Microphone access denied. Please enable microphone permissions.');
+        } else if (errorType === 'no-speech') {
+          this.emit('speechRecognitionError', 'No speech detected. Please try speaking louder.');
+        } else if (errorType === 'network') {
+          this.emit('speechRecognitionError', 'Network error. Check your internet connection.');
+        } else {
+          this.emit('speechRecognitionError', `Speech recognition failed: ${errorType}`);
+        }
       };
 
       this.speechRecognition.onend = () => {
-        console.log('Speech recognition ended');
+        // Speech recognition ended
         this.isRecognizing = false;
         
         this.emit('speechRecognitionEnded', {

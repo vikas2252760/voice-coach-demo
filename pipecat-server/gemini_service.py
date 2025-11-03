@@ -38,120 +38,14 @@ class GeminiService:
                 raise
     
     async def _select_model(self):
-        """Select the most efficient Gemini model for quota management using HTTP API"""
-        try:
-            # Updated model preferences for 2024/2025 - Gemini 1.5 series deprecated
-            preferred_models = [
-                'gemini-2.0-flash-exp',  # Latest experimental model
-                'gemini-2.0-flash-thinking-exp-1219',  # Thinking model
-                'gemini-exp-1206',  # Experimental release
-                'gemini-exp-1121',  # Previous experimental
-                'gemini-1.5-pro-002',  # Last supported 1.5 model
-                'gemini-1.5-flash-002',  # Last flash variant
-            ]
-            
-            # First, try to list available models dynamically via HTTP
-            try:
-                logger.info("Fetching available Gemini models via HTTP API...")
-                
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(
-                        f"{self.base_url}/models",
-                        headers=self.headers,
-                        timeout=10.0
-                    )
-                    
-                    if response.status_code == 200:
-                        models_data = response.json()
-                        available_models = []
-                        
-                        for model in models_data.get('models', []):
-                            if 'generateContent' in model.get('supportedGenerationMethods', []):
-                                model_name = model['name'].replace('models/', '')
-                                available_models.append(model_name)
-                                logger.debug(f"Available model: {model_name}")
-                        
-                        # Sort by preference (flash models first, then by version)
-                        def model_priority(model_name):
-                            if 'flash' in model_name.lower():
-                                return 0  # Highest priority
-                            elif '2.0' in model_name:
-                                return 1
-                            elif '1.5' in model_name:
-                                return 2
-                            else:
-                                return 3
-                        
-                        available_models.sort(key=model_priority)
-                        logger.info(f"Found {len(available_models)} available models")
-                        
-                        # Try available models in priority order
-                        for model_name in available_models:
-                            try:
-                                # Test the model with a simple request
-                                test_url = f"{self.base_url}/models/{model_name}:generateContent"
-                                test_payload = {
-                                    "contents": [{"parts": [{"text": "Hello"}]}],
-                                    "generationConfig": {"maxOutputTokens": 1}
-                                }
-                                
-                                test_response = await client.post(
-                                    test_url,
-                                    headers=self.headers,
-                                    json=test_payload,
-                                    timeout=5.0
-                                )
-                                
-                                if test_response.status_code in [200, 429]:  # 200 OK or 429 quota (but model exists)
-                                    self.model_name = model_name
-                                    logger.info(f"✅ Successfully using model: {self.model_name}")
-                                    return
-                                    
-                            except Exception as e:
-                                logger.debug(f"Failed to test model {model_name}: {e}")
-                                continue
-                        
-                    else:
-                        logger.warning(f"Failed to fetch models: HTTP {response.status_code}")
-                        
-            except Exception as e:
-                logger.warning(f"Failed to list models dynamically: {e}")
-            
-            # Fallback: Try preferred models manually
-            logger.info("Trying preferred models manually...")
-            async with httpx.AsyncClient() as client:
-                for model_name in preferred_models:
-                    try:
-                        # Test the model with a simple request
-                        test_url = f"{self.base_url}/models/{model_name}:generateContent"
-                        test_payload = {
-                            "contents": [{"parts": [{"text": "Hello"}]}],
-                            "generationConfig": {"maxOutputTokens": 1}
-                        }
-                        
-                        test_response = await client.post(
-                            test_url,
-                            headers=self.headers,
-                            json=test_payload,
-                            timeout=5.0
-                        )
-                        
-                        if test_response.status_code in [200, 429]:  # 200 OK or 429 quota (but model exists)
-                            self.model_name = model_name
-                            logger.info(f"✅ Using preferred model: {self.model_name}")
-                            return
-                            
-                    except Exception as e:
-                        logger.debug(f"Model {model_name} not available: {e}")
-                        continue
-            
-            # Final fallback - this should not happen with current API
-            raise Exception("No compatible Gemini models found. Please check your API key and permissions.")
-                
-        except Exception as e:
-            logger.error(f"❌ Model selection failed: {e}")
-            logger.error("Please ensure your Gemini API key is valid and has access to current models")
-            raise Exception(f"Failed to initialize Gemini model: {e}")
+        """Use exact model endpoint specified by user: gemini-2.0-flash"""
+        # FORCE use of exact endpoint - no dynamic selection or fallbacks
+        self.model_name = 'gemini-2.0-flash'
+        logger.info(f"🎯 FORCING exact model as requested: {self.model_name}")
+        logger.info(f"🔧 Will use endpoint: {self.base_url}/models/{self.model_name}:generateContent")
+        
+        # No testing - just use it directly as requested
+        logger.info(f"✅ Model set to: {self.model_name}")
     
     async def generate_response(self, user_input: str) -> str:
         """Generate response from Gemini AI using direct HTTP requests"""

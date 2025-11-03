@@ -35,7 +35,6 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
   const [conversationId] = useState(`conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [userId] = useState(`user_${Math.random().toString(36).substr(2, 9)}`);
   const [showHistory, setShowHistory] = useState(false);
-  const [testText, setTestText] = useState(''); // For manual text testing
   const messagesEndRef = useRef(null);
   const sessionStartTime = useRef(Date.now());
   const recentMessages = useRef(new Set());
@@ -310,25 +309,13 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
               hasTranscription: true
             });
         } else {
-            // No transcription available - but still send the audio for potential server-side processing
-            console.warn('⚠️ No transcription available, but sending audio anyway');
+            // No transcription available - not sending to preserve API quota
             
-            // Send audio without transcription - let server handle it
-            websocketService.send('voice_data', {
-              audio: audioBase64,
-              transcribedText: '', // Empty but present
-              customer: customer,
-              scenario: currentExample,
-              conversation_id: conversationId,
-              user_id: userId,
-              timestamp: Date.now(),
-              audioSize: audioBlob.size,
-              mimeType: audioBlob.type,
-              hasTranscription: false,
-              needsTranscription: true // Flag for server to know this needs processing
-            });
+            // Show user message instead of making unnecessary API call
+            addAIMessage('🎤 Speech recognition failed. Please try again or ensure microphone permissions are enabled.');
             
-            addSystemMessage(`🔄 Processing your audio... (No live transcription available)`);
+            // Don't send to server to avoid wasting API calls
+            return;
         }
 
           // Safety timeout for voice data analysis
@@ -665,7 +652,7 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
               messages.map(message => (
                 <div key={message.id} className={`message ${message.type}`}>
                   <div className="message-content">
-                    {message.content.split('\n').map((line, i) => (
+                    {(message.content || '').toString().split('\n').map((line, i) => (
                       <div key={i}>{line}</div>
                     ))}
                   </div>
