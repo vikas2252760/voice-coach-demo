@@ -35,6 +35,7 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
   const [conversationId] = useState(`conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [userId] = useState(`user_${Math.random().toString(36).substr(2, 9)}`);
   const [showHistory, setShowHistory] = useState(false);
+  const [testText, setTestText] = useState(''); // For manual text testing
   const messagesEndRef = useRef(null);
   const sessionStartTime = useRef(Date.now());
   const recentMessages = useRef(new Set());
@@ -253,9 +254,13 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
       setIsTranscribing(false);
       
       // Send transcription to server via WebSocket
-      const transcriptToSend = result.transcript || "User provided voice input for coaching analysis";
-      console.log('📤 Sending transcript to server:', transcriptToSend);
-      websocketService.send('voice_data', { transcribedText: transcriptToSend });
+      // Only send if we have actual transcription
+      if (result.transcript && result.transcript.trim().length > 0) {
+        console.log('📤 Sending transcript to server:', result.transcript);
+        websocketService.send('voice_data', { transcribedText: result.transcript.trim() });
+      } else {
+        console.log('⚠️ No transcription available - skipping voice_data send');
+      }
       
       if (result.success && result.finalText && result.finalText.trim().length > 0) {
         addUserMessage(`💬 You said: "${result.finalText}"`);
@@ -283,26 +288,48 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
         // Get the final transcribed text
         const finalTranscribedText = transcribedText || voiceService.getTranscribedText().final;
         
+        // Only proceed if we have transcription
+        if (finalTranscribedText && finalTranscribedText.trim().length > 0) {
             // Show immediate feedback while processing
-            const transcriptionPreview = finalTranscribedText ? 
-              ` Your message: "${finalTranscribedText.substring(0, 100)}${finalTranscribedText.length > 100 ? '...' : ''}"` : '';
+            const transcriptionPreview = ` Your message: "${finalTranscribedText.substring(0, 100)}${finalTranscribedText.length > 100 ? '...' : ''}"`;
             addSystemMessage(`🔄 Analyzing your pitch...${transcriptionPreview}\n\n⚡ AI coach response incoming!`);
 
             // Send audio data and transcribed text to AI for analysis
             setIsAiTyping(true);
         
-        websocketService.send('voice_data', {
-          audio: audioBase64,
-          transcribedText: finalTranscribedText,
-          customer: customer,
-          scenario: currentExample,
-          conversation_id: conversationId,
-          user_id: userId,
-          timestamp: Date.now(),
-          audioSize: audioBlob.size,
-          mimeType: audioBlob.type,
-          hasTranscription: finalTranscribedText.length > 0
-        });
+            websocketService.send('voice_data', {
+              audio: audioBase64,
+              transcribedText: finalTranscribedText.trim(),
+              customer: customer,
+              scenario: currentExample,
+              conversation_id: conversationId,
+              user_id: userId,
+              timestamp: Date.now(),
+              audioSize: audioBlob.size,
+              mimeType: audioBlob.type,
+              hasTranscription: true
+            });
+        } else {
+            // No transcription available - but still send the audio for potential server-side processing
+            console.warn('⚠️ No transcription available, but sending audio anyway');
+            
+            // Send audio without transcription - let server handle it
+            websocketService.send('voice_data', {
+              audio: audioBase64,
+              transcribedText: '', // Empty but present
+              customer: customer,
+              scenario: currentExample,
+              conversation_id: conversationId,
+              user_id: userId,
+              timestamp: Date.now(),
+              audioSize: audioBlob.size,
+              mimeType: audioBlob.type,
+              hasTranscription: false,
+              needsTranscription: true // Flag for server to know this needs processing
+            });
+            
+            addSystemMessage(`🔄 Processing your audio... (No live transcription available)`);
+        }
 
           // Safety timeout for voice data analysis
           const voiceDataTimeout = setTimeout(() => {

@@ -45,7 +45,6 @@ class WebSocketService {
     this.isConnected = false;
     this.isOfflineMode = false;
     
-    console.log('🔄 Connecting to Voice Coach server:', targetUrl);
     
     try {
       this.ws = new WebSocket(targetUrl);
@@ -90,7 +89,6 @@ class WebSocketService {
     };
 
     this.ws.onclose = (event) => {
-      console.log('🔌 Connection closed:', event.code);
       this.cleanup();
       this.isConnected = false;
       
@@ -103,7 +101,6 @@ class WebSocketService {
       // Try reconnection for unexpected closures
       if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
         this.reconnectAttempts++;
-        console.log(`🔄 Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         setTimeout(() => this.connect(), 2000);
       } else if (event.code !== 1000) {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
@@ -144,6 +141,17 @@ class WebSocketService {
         break;
         
       case 'textFeedback':
+        
+        // Clear processing flag when we receive AI response
+        if (this.processing && this.waitingForResponse) {
+          this.processing = false;
+          this.waitingForResponse = false;
+          if (this.currentProcessingTimeout) {
+            clearTimeout(this.currentProcessingTimeout);
+            this.currentProcessingTimeout = null;
+          }
+        }
+        
         this.emit('textFeedback', {
           message: data.message || 'Feedback from AI Voice Coach',
           type: 'ai',
@@ -158,13 +166,8 @@ class WebSocketService {
         
       case 'audioResponse':
         console.log('🔊 Audio response received from Gemini AI');
-        this.emit('textFeedback', {
-          message: data.message || 'Audio coaching response received',
-          type: 'ai',
-          timestamp: data.timestamp || Date.now(),
-          hasAudio: true
-        });
-        // Trigger text-to-speech for audio response
+        // Don't emit textFeedback here - let the textFeedback message handle display
+        // Just handle the audio playback
         this.playAudioResponse(data.message);
         break;
         
@@ -216,7 +219,6 @@ class WebSocketService {
     if (type === 'voice_data') {
       // Block if already processing
       if (this.processing) {
-        console.log('🚫 Already processing voice data - blocking duplicate');
         return;
       }
       
@@ -228,13 +230,11 @@ class WebSocketService {
       
       // Check if we already sent this exact message
       if (this.sentMessages.has(messageId)) {
-        console.log('🚫 Exact duplicate message blocked');
         return;
       }
       
       // Check cooldown period
       if (this.lastSentMessage === messageContent && (now - this.lastSentTime) < this.messageCooldown) {
-        console.log('🚫 Duplicate message blocked - cooldown active');
         return;
       }
       
@@ -261,17 +261,24 @@ class WebSocketService {
     if (this.isConnected && this.ws && this.ws.readyState === WebSocket.OPEN && !this.isOfflineMode) {
       const message = { type, timestamp: Date.now(), ...payload };
       
-      // Ensure voice_data has transcribedText
-      if (type === 'voice_data' && !message.transcribedText) {
-        message.transcribedText = payload.text || payload.transcription || 'User provided voice input for coaching analysis';
+      // Ensure voice_data has transcribedText (no placeholder fallback)
+      if (type === 'voice_data' && !message.transcribedText && !payload.text && !payload.transcription) {
+        console.warn('⚠️ No transcription provided for voice_data message');
       }
       
       try {
         this.ws.send(JSON.stringify(message));
-        console.log('📤 UNIQUE message sent to server:', type, message.transcribedText ? `"${message.transcribedText.substring(0, 30)}..."` : '');
+        
+        // Clear processing flag when we receive a response (set up listener)
+        if (type === 'voice_data') {
+          this.waitingForResponse = true;
+        }
       } catch (error) {
         console.error('❌ Send failed:', error);
         this.processing = false; // Clear processing flag on error
+        if (this.currentProcessingTimeout) {
+          clearTimeout(this.currentProcessingTimeout);
+        }
         this.emit('textFeedback', {
           message: 'Connection error - please try again',
           type: 'error',
@@ -296,7 +303,6 @@ class WebSocketService {
   // Queue message for retry
   queueMessage(message) {
     this.messageQueue.push(message);
-    console.log('📦 Message queued for retry');
   }
 
   // Process queued messages
@@ -305,7 +311,6 @@ class WebSocketService {
       const message = this.messageQueue.shift();
       try {
         this.ws.send(JSON.stringify(message));
-        console.log('📤 Queued message sent:', message.type);
       } catch (error) {
         console.error('❌ Queued message failed:', error);
         break;
@@ -318,7 +323,6 @@ class WebSocketService {
   // NO mock responses - only real server responses
   simulateResponse(type, payload) {
     // Do nothing - no mock responses allowed
-    console.log('🚫 Mock responses disabled - only real server responses');
   }
 
 
@@ -349,7 +353,6 @@ class WebSocketService {
   // Play audio response using browser TTS
   playAudioResponse(text) {
     if ('speechSynthesis' in window) {
-      console.log('🔊 Attempting to play audio response:', text.substring(0, 50) + '...');
       
       // Stop any current speech
       speechSynthesis.cancel();
@@ -363,7 +366,6 @@ class WebSocketService {
         
         // Load voices if not already loaded
         const voices = speechSynthesis.getVoices();
-        console.log('🎤 Available voices:', voices.length);
         
         // Select a professional voice
         const preferredVoice = voices.find(voice => 
@@ -373,16 +375,13 @@ class WebSocketService {
         
         if (preferredVoice) {
           utterance.voice = preferredVoice;
-          console.log('🎤 Selected voice:', preferredVoice.name);
         }
 
         utterance.onstart = () => {
-          console.log('🎤 AI Coach speaking...');
           this.emit('speechStarted', { text: text });
         };
         
         utterance.onend = () => {
-          console.log('✅ AI Coach finished speaking');
           this.emit('speechEnded', { text: text });
         };
         
@@ -392,7 +391,6 @@ class WebSocketService {
         };
 
         speechSynthesis.speak(utterance);
-        console.log('🔊 Speech synthesis started');
       }, 100);
     } else {
       console.warn('⚠️ Speech synthesis not supported in this browser');

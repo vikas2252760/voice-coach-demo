@@ -21,6 +21,7 @@ class WebSocketHandler:
     def __init__(self):
         self.active_sessions: Dict[str, dict] = {}
         self.gemini_service = GeminiService()
+        self.processing_requests: Dict[str, bool] = {}  # Track active requests per client
         
     def generate_client_id(self, websocket) -> str:
         """Generate unique client ID"""
@@ -69,7 +70,6 @@ class WebSocketHandler:
             if client_id in self.active_sessions:
                 self.active_sessions[client_id]['message_count'] += 1
             
-            logger.debug(f"📨 Message from {client_id}: {message_type}")
             
             # Route message based on type
             if message_type == 'voice_data':
@@ -87,20 +87,57 @@ class WebSocketHandler:
             await self.send_error(websocket, "Message processing failed")
     
     async def handle_voice_data(self, websocket, client_id: str, data: dict):
-        """Handle voice data and generate AI response"""
+        """Handle voice data and generate AI response with async protection"""
+        
+        # Check if client is already processing a request
+        if self.processing_requests.get(client_id, False):
+            logger.warning(f"⚠️ {client_id} already processing - queuing request")
+            await self.send_message(websocket, {
+                'type': 'textFeedback',
+                'message': 'Please wait, I\'m still processing your previous message...',
+                'timestamp': datetime.now().isoformat(),
+                'source': 'rate_limit'
+            })
+            return
+        
+        # Mark client as processing
+        self.processing_requests[client_id] = True
+        
         try:
-            # Extract transcribed text
+            # Debug: Log the raw data received
+            
+            # Extract transcribed text with better field checking
             transcribed_text = (
                 data.get('transcribedText') or 
                 data.get('text') or 
                 data.get('transcription') or
-                'User provided voice input for coaching analysis'
-            ).strip()
+                data.get('message') or  # Check for message field too
+                None  # Don't use placeholder - handle None case
+            )
             
-            logger.info(f"🎙️ Processing audio from {client_id}: {transcribed_text[:50]}...")
+            if transcribed_text:
+                transcribed_text = transcribed_text.strip()
+            
+            logger.info(f"🎙️ Processing audio from {client_id}: {transcribed_text[:50] if transcribed_text else 'No transcription'}...")
             logger.info(f"📝 Received transcription: '{transcribed_text}'")
             
-            # Generate AI response
+            # Handle missing transcription but allow processing if needsTranscription flag is set
+            if not transcribed_text or transcribed_text == '':
+                if data.get('needsTranscription', False):
+                    # Frontend sent audio but no transcription - create a generic prompt
+                    transcribed_text = "Please provide a helpful response to this audio message"
+                    logger.info("🎤 Using generic prompt for audio without transcription")
+                else:
+                    logger.warning("⚠️ No transcription received and no audio processing requested")
+                    await self.send_message(websocket, {
+                        'type': 'textFeedback', 
+                        'message': "I didn't receive any text from your voice input. Please try speaking again or check your microphone settings.",
+                        'timestamp': datetime.now().isoformat(),
+                        'source': 'system_error'
+                    })
+                    return
+            
+            # Generate AI response with real transcription
             if transcribed_text:
                 ai_response = await self.gemini_service.generate_response(transcribed_text)
                 
@@ -125,6 +162,9 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"Error processing voice data from {client_id}: {e}")
             await self.send_error(websocket, "Voice processing failed")
+        finally:
+            # Always clear processing flag
+            self.processing_requests[client_id] = False
     
     async def handle_ping(self, websocket, client_id: str):
         """Handle ping message"""
@@ -160,6 +200,10 @@ class WebSocketHandler:
                        f"messages: {session_info['message_count']})")
             
             del self.active_sessions[client_id]
+        
+        # Clean up processing flag
+        if client_id in self.processing_requests:
+            del self.processing_requests[client_id]
     
     def get_server_stats(self) -> dict:
         """Get server statistics"""

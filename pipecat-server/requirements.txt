@@ -9,6 +9,7 @@ websockets
 # Gemini Live AI Service
 google-generativeai
 python-dotenv
+httpx
 
 # Audio processing (if needed)
 # Note: Gemini Live handles audio directly

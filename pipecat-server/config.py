@@ -21,7 +21,7 @@ class Config:
     PORT = int(os.getenv("VOICE_COACH_PORT", "8080"))
     
     # Gemini Settings
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")  # Updated to current model
     GEMINI_VOICE = os.getenv("GEMINI_VOICE", "Puck")
     
     # Logging

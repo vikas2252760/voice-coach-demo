@@ -127,7 +127,7 @@ class VoiceService {
         this.emit('speechRecognitionEnded', {
           finalText: this.transcribedText,
           success: this.transcribedText.length > 0,
-          transcript: this.transcribedText.trim() || "User provided voice input for coaching analysis"
+          transcript: this.transcribedText.trim()  // No placeholder fallback
         });
       };
 
