@@ -1,22 +1,39 @@
-# Pipecat Voice Coach Server Requirements
+# Native Audio Voice Coach Server Requirements
 
-# Core Pipecat framework
+# Core Pipecat framework (optional - for fallback)
 pipecat-ai
 
-# WebSocket support
+# WebSocket support for real-time communication
 websockets
 
-# Gemini Live AI Service
-google-generativeai
+# Google Gemini AI with Native Audio support
+google-generativeai>=0.8.0
+google-genai>=0.2.0
+
+# Environment and configuration
 python-dotenv
 httpx
 
-# Audio processing (if needed)
-# Note: Gemini Live handles audio directly
+# Audio processing for native audio handling
+librosa>=0.10.0
+soundfile>=0.12.0
+numpy>=1.24.0
+
+# Audio encoding/decoding
+pydub>=0.25.0
 
 # Web framework for additional endpoints (optional)
 fastapi
 uvicorn
 
-# Logging and utilities
+# Enhanced logging
 python-json-logger
+
+# Async utilities
+aiofiles
+
+# Data validation (optional but recommended)
+pydantic>=2.0.0
+
+# SSL certificate handling
+certifi>=2023.0.0
