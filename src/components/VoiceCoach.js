@@ -71,7 +71,11 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
         
         websocketService.on('connected', (data) => {
           setIsConnected(true);
-          addSystemMessage(`🎯 Connected to Voice Coach!\n\nIntelligent coaching system is ready. Start recording to begin your personalized practice session.`);
+          const connectionMessage = data.model 
+            ? `🎵 Connected to Native Audio Voice Coach!\n\nModel: ${data.model}\nAudio: ${data.audioConfig?.input_rate || '16kHz'} input → ${data.audioConfig?.output_rate || '24kHz'} output\n\nIntelligent coaching system with real-time audio processing is ready. Start recording to begin your personalized practice session.`
+            : `🎯 Connected to Voice Coach!\n\nIntelligent coaching system is ready. Start recording to begin your personalized practice session.`;
+          
+          addSystemMessage(connectionMessage);
         });
 
         websocketService.on('disconnected', (data) => {
@@ -159,7 +163,26 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
         });
 
         websocketService.on('maxReconnectAttemptsReached', (data) => {
-          addSystemMessage(`❌ Could not connect to Pipecat server after ${data.attempts} attempts.\n\n🔧 Please ensure:\n• Pipecat server is running (./start.sh)\n• API keys are configured\n• Port 8080 is available`);
+          addSystemMessage(`❌ Could not connect to Voice Coach server after ${data.attempts} attempts.\n\n🔧 Please ensure:\n• Voice Coach server is running\n• API keys are configured\n• Port 8080 is available`);
+        });
+
+        // Native Audio Event Listeners
+        websocketService.on('nativeAudioStarted', (data) => {
+          addSystemMessage(`🎵 Playing AI voice response (${data.duration?.toFixed(1)}s, ${data.sampleRate || '24kHz'})`);
+        });
+
+        websocketService.on('nativeAudioEnded', (data) => {
+          addSystemMessage(`✅ Audio response completed`);
+        });
+
+        websocketService.on('audioError', (data) => {
+          addSystemMessage(`⚠️ Audio playback error: ${data.error}`);
+        });
+
+        websocketService.on('audioResponse', (data) => {
+          if (data.hasAudio) {
+            addSystemMessage(`🔊 Native audio response received (${data.size} bytes, ${data.mimeType})`);
+          }
         });
 
         // Handle intelligent session events
@@ -291,7 +314,7 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
         if (finalTranscribedText && finalTranscribedText.trim().length > 0) {
             // Show immediate feedback while processing
             const transcriptionPreview = ` Your message: "${finalTranscribedText.substring(0, 100)}${finalTranscribedText.length > 100 ? '...' : ''}"`;
-            addSystemMessage(`🔄 Analyzing your pitch...${transcriptionPreview}\n\n⚡ AI coach response incoming!`);
+            addSystemMessage(`🎵 Processing with Gemini Native Audio...${transcriptionPreview}\n\n⚡ AI coach response with native audio incoming!`);
 
             // Send audio data and transcribed text to AI for analysis
             setIsAiTyping(true);
@@ -711,6 +734,15 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
                     )}
                     {message.progressPercent && (
                       <span className="progress-indicator">Progress: {message.progressPercent}%</span>
+                    )}
+                    {message.model && (
+                      <span className="ai-model">Model: {message.model.includes('native-audio') ? '🎵 Native Audio' : message.model}</span>
+                    )}
+                    {message.hasAudioResponse && (
+                      <span className="audio-indicator">🔊 Audio Response</span>
+                    )}
+                    {message.processingTime && (
+                      <span className="processing-time">⏱️ {(message.processingTime * 1000).toFixed(0)}ms</span>
                     )}
                   </div>
                 </div>

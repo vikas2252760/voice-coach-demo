@@ -23,6 +23,7 @@ class NativeAudioWebSocketHandler:
     
     def __init__(self):
         self.gemini_service = GeminiNativeAudioService()
+        self.gemini_connected = False  # Track Gemini connection state
         self.active_clients: Set[websockets.WebSocketServerProtocol] = set()
         self.client_sessions: Dict[str, Dict[str, Any]] = {}
         self.server_stats = {
@@ -56,11 +57,17 @@ class NativeAudioWebSocketHandler:
         }
         
         try:
-            # Connect to Gemini Native Audio API for this client
-            connected = await self.gemini_service.connect()
-            if not connected:
-                await self._send_error(websocket, "Failed to connect to Gemini Native Audio API")
-                return
+            # Connect to Gemini Native Audio API only if not already connected
+            if not self.gemini_connected:
+                logger.info(f"🔌 Connecting to Gemini API for first client: {client_id}")
+                connected = await self.gemini_service.connect()
+                if not connected:
+                    await self._send_error(websocket, "Failed to connect to Gemini Native Audio API")
+                    return
+                self.gemini_connected = True
+                logger.info("✅ Gemini API connection established and will be reused")
+            else:
+                logger.info(f"♻️ Reusing existing Gemini connection for client: {client_id}")
             
             # Send connection confirmation
             await self._send_message(websocket, "connected", {
@@ -317,8 +324,13 @@ class NativeAudioWebSocketHandler:
             # Update server stats
             self.server_stats["active_sessions"] = len(self.active_clients)
             
-            # Disconnect Gemini service for this client
-            await self.gemini_service.disconnect()
+            # Only disconnect Gemini when no more clients are connected
+            if len(self.active_clients) == 0 and self.gemini_connected:
+                logger.info("🔌 Last client disconnected, closing Gemini connection")
+                await self.gemini_service.disconnect()
+                self.gemini_connected = False
+            elif self.gemini_connected:
+                logger.info(f"♻️ Keeping Gemini connection alive for {len(self.active_clients)} remaining clients")
             
             logger.info(f"🧹 Cleaned up client {client_id}")
             
