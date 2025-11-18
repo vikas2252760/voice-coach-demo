@@ -17,7 +17,7 @@ import "@pipecat-ai/voice-ui-kit/styles";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 
-const VoiceCoach = ({ customer, isActive, onClose }) => {
+const VoiceCoach = ({ customer, isActive, onClose, fullScreen = false }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -613,17 +613,23 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
     );
   }
 
-  return (
-    <ThemeProvider>
-      <div className="voice-coach voice-coach-enhanced">
+  const voiceCoachContent = (
+    <div className={`voice-coach voice-coach-enhanced ${fullScreen ? 'fullscreen' : ''}`}>
       <div className="voice-coach-header">
-        <h3>🎙️ Conversational Voice Coach</h3>
-            <div className="coach-status">
-              <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
-              <span className="status-text">
-                {isConnected ? 'AI Coach Ready' : 'Connecting...'}
-              </span>
-            </div>
+        <h3>🎙️ Voice Coach</h3>
+        <div className="header-actions">
+          <div className="coach-status">
+            <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+            <span className="status-text">
+              {isConnected ? 'AI Ready' : 'Connecting...'}
+            </span>
+          </div>
+          {fullScreen && (
+            <button className="minimize-btn" onClick={onClose} title="Minimize">
+              <span>−</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Session Stats */}
@@ -863,14 +869,27 @@ const VoiceCoach = ({ customer, isActive, onClose }) => {
           {/* Action Buttons */}
           <div className="coach-actions">
             <button onClick={getConversationHistory} className="history-btn">
-              📜 View History
+              📜 History
             </button>
             
-            <button onClick={onClose} className="close-coach-btn">
-              ✕ Close Coach
-            </button>
+            {!fullScreen && (
+              <button onClick={onClose} className="close-coach-btn">
+                ✕ Close
+              </button>
+            )}
           </div>
       </div>
+  );
+
+  return (
+    <ThemeProvider>
+      {fullScreen ? (
+        <div className="voice-coach-fullscreen-overlay">
+          {voiceCoachContent}
+        </div>
+      ) : (
+        voiceCoachContent
+      )}
     </ThemeProvider>
   );
 };

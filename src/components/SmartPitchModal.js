@@ -90,13 +90,12 @@ const SmartPitchModal = ({ isOpen, onClose, customer }) => {
           )}
 
           {activeTab === 'coach' && (
-            <div className="voice-coach-container">
-              <VoiceCoach 
-                customer={customer}
-                isActive={true}
-                onClose={() => setActiveTab('pitch')}
-              />
-            </div>
+            <VoiceCoach 
+              customer={customer}
+              isActive={true}
+              onClose={() => setActiveTab('pitch')}
+              fullScreen={true}
+            />
           )}
 
           {activeTab === 'coverage' && (

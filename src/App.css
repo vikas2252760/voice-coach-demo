@@ -1,48 +1,129 @@
+/* Mobile-first App container */
 .App {
-  max-width: 480px;
+  max-width: 100%;
   margin: 0 auto;
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
   background-color: #ffffff;
   position: relative;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  /* Remove box-shadow on mobile for better performance */
+  box-shadow: none;
+  /* Ensure full height on mobile */
+  display: flex;
+  flex-direction: column;
 }
 
-/* Mobile-first responsive design */
-@media (max-width: 480px) {
+/* Handle safe areas for notched devices */
+@supports (padding: max(0px)) {
   .App {
-    max-width: 100%;
-    box-shadow: none;
+    padding-top: max(env(safe-area-inset-top), 0px);
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
   }
 }
 
-/* Common button styles */
+/* Tablet and desktop styles */
+@media (min-width: 481px) {
+  .App {
+    max-width: 480px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 20px 20px;
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 768px) {
+  .App {
+    max-width: 420px;
+    margin: 20px auto;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  }
+}
+
+@media (min-width: 1024px) {
+  .App {
+    max-width: 480px;
+    margin: 40px auto;
+  }
+}
+
+/* Mobile-optimized button styles */
 .button {
-  padding: 12px 24px;
-  border-radius: 8px;
+  padding: 16px 24px;
+  border-radius: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   font-size: 16px;
+  line-height: 1.2;
+  /* Ensure minimum touch target */
+  min-height: 48px;
+  min-width: 48px;
+  /* Better mobile interaction */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  /* Prevent text selection */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Larger buttons for mobile */
+@media (max-width: 480px) {
+  .button {
+    padding: 18px 32px;
+    font-size: 17px;
+    min-height: 52px;
+    border-radius: 14px;
+  }
+}
+
+/* Active state for mobile */
+.button:active {
+  transform: scale(0.98);
 }
 
 .button-primary {
-  background-color: #8B5CF6;
+  background: linear-gradient(135deg, #8B5CF6, #7C3AED);
   color: white;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+  border: none;
 }
 
 .button-primary:hover {
-  background-color: #7C3AED;
+  background: linear-gradient(135deg, #7C3AED, #6D28D9);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.button-primary:active {
+  background: linear-gradient(135deg, #6D28D9, #5B21B6);
+  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.3);
+  transform: translateY(0);
 }
 
 .button-secondary {
-  background-color: #E5E7EB;
+  background: linear-gradient(135deg, #F3F4F6, #E5E7EB);
   color: #374151;
+  border: 1px solid #D1D5DB;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .button-secondary:hover {
-  background-color: #D1D5DB;
+  background: linear-gradient(135deg, #E5E7EB, #D1D5DB);
+  color: #111827;
+  border-color: #9CA3AF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.button-secondary:active {
+  background: linear-gradient(135deg, #D1D5DB, #9CA3AF);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+  transform: translateY(0);
 }
